@@ -3,6 +3,7 @@ package ru.clevertec
 import config.configureDatabase
 import config.configureSerialization
 import io.ktor.server.application.*
+import ru.clevertec.config.configureAuth
 import ru.clevertec.config.configureDependencies
 import ru.clevertec.config.configureExceptions
 import ru.clevertec.config.configureLiquibase
