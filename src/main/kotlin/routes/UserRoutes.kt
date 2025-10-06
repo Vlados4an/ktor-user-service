@@ -1,65 +1,58 @@
 package ru.clevertec.routes
 
+import dto.auth.CreatePenaltyRequest
 import dto.user.UpdateUserRequest
+import exception.InsufficientPermissionsException
 import io.ktor.http.*
 import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
-import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import model.enums.UserRole
+import org.kodein.di.instance
+import org.kodein.di.ktor.closestDI
+import ru.clevertec.util.getPageRequest
+import ru.clevertec.validator.getIntParamOrBadRequest
+import ru.clevertec.validator.validatedReceive
 import service.user.UserService
 
-fun Route.userRoutes(userService: UserService) {
+fun Route.userRoutes() {
+
+    val userService by closestDI().instance<UserService>()
 
     authenticate("auth-jwt") {
         route("/api/v1/users") {
 
-            // Текущий пользователь
             get("/me") {
                 val principal = call.principal<JWTPrincipal>()
                 val userId = principal?.payload?.subject?.toInt()
-                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                    ?: throw InsufficientPermissionsException("Unauthorized")
 
-                try {
-                    val user = userService.getCurrentUser(userId)
-                    call.respond(HttpStatusCode.OK, user)
-                } catch (e: NoSuchElementException) {
-                    call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
-                }
+                val user = userService.getCurrentUser(userId)
+                call.respond(HttpStatusCode.OK, user)
             }
 
             put("/me") {
                 val principal = call.principal<JWTPrincipal>()
                 val userId = principal?.payload?.subject?.toInt()
-                    ?: return@put call.respond(HttpStatusCode.Unauthorized)
+                    ?: throw InsufficientPermissionsException("Unauthorized")
 
-                try {
-                    val request = call.receive<UpdateUserRequest>()
-                    val user = userService.updateCurrentUser(userId, request)
-                    call.respond(HttpStatusCode.OK, user)
-                } catch (e: NoSuchElementException) {
-                    call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
-                }
+                val request = call.validatedReceive<UpdateUserRequest>()
+                val user = userService.updateCurrentUser(userId, request)
+                call.respond(HttpStatusCode.OK, user)
             }
 
-            // Только для ADMIN
             get("/{id}") {
                 val principal = call.principal<JWTPrincipal>()
                 val role = principal?.payload?.getClaim("role")?.asString()
                 if (role != UserRole.ADMIN.name) {
-                    return@get call.respond(HttpStatusCode.Forbidden)
+                    throw InsufficientPermissionsException("Admin access required")
                 }
 
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID"))
+                val id = call.getIntParamOrBadRequest("id")
 
-                try {
-                    val user = userService.getUserById(id)
-                    call.respond(HttpStatusCode.OK, user)
-                } catch (e: NoSuchElementException) {
-                    call.respond(HttpStatusCode.NotFound, mapOf("error" to e.message))
-                }
+                val user = userService.getUserById(id)
+                call.respond(HttpStatusCode.OK, user)
             }
 
             get {
@@ -69,10 +62,9 @@ fun Route.userRoutes(userService: UserService) {
                     return@get call.respond(HttpStatusCode.Forbidden)
                 }
 
-                val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
-                val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
+                val pageRequest = call.getPageRequest()
 
-                val users = userService.getAllUsers(page, size)
+                val users = userService.getAllUsers(pageRequest)
                 call.respond(HttpStatusCode.OK, users)
             }
 
@@ -80,18 +72,13 @@ fun Route.userRoutes(userService: UserService) {
                 val principal = call.principal<JWTPrincipal>()
                 val role = principal?.payload?.getClaim("role")?.asString()
                 if (role !in listOf(UserRole.ADMIN.name, UserRole.LIBRARIAN.name)) {
-                    return@put call.respond(HttpStatusCode.Forbidden)
+                    throw InsufficientPermissionsException("Admin or Librarian access required")
                 }
 
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID"))
+                val id = call.getIntParamOrBadRequest("id")
 
-                try {
-                    val user = userService.blockUser(id)
-                    call.respond(HttpStatusCode.OK, user)
-                } catch (e: Exception) {
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
-                }
+                val user = userService.blockUser(id)
+                call.respond(HttpStatusCode.OK, user)
             }
 
             get("/{id}/penalties") {
@@ -99,16 +86,26 @@ fun Route.userRoutes(userService: UserService) {
                 val userId = principal?.payload?.subject?.toInt()
                 val role = principal?.payload?.getClaim("role")?.asString()
 
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid ID"))
+                val id = call.getIntParamOrBadRequest("id")
 
-                // Пользователь может видеть только свои штрафы, или ADMIN/LIBRARIAN могут видеть любые
                 if (userId != id && role !in listOf(UserRole.ADMIN.name, UserRole.LIBRARIAN.name)) {
-                    return@get call.respond(HttpStatusCode.Forbidden)
+                    throw InsufficientPermissionsException("Admin or Librarian access required")
                 }
 
                 val penalties = userService.getUserPenalties(id)
                 call.respond(HttpStatusCode.OK, penalties)
+            }
+
+            post("/penalties") {
+                val principal = call.principal<JWTPrincipal>()
+                val role = principal?.payload?.getClaim("role")?.asString()
+                if (role !in listOf(UserRole.ADMIN.name, UserRole.LIBRARIAN.name)) {
+                    throw InsufficientPermissionsException("Admin or Librarian access required")
+                }
+
+                val request = call.validatedReceive<CreatePenaltyRequest>()
+                val penalty = userService.createPenalty(request)
+                call.respond(HttpStatusCode.Created, penalty)
             }
         }
     }

@@ -12,5 +12,5 @@ class UserActivityLogEntity(id: EntityID<Int>) : IntEntity(id) {
     var action by UserActivityLogs.action
     var details by UserActivityLogs.details
     var ipAddress by UserActivityLogs.ipAddress
-    var createdAt by UserActivityLogs.createdAt
+    val createdAt by UserActivityLogs.createdAt
 }

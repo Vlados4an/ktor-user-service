@@ -12,6 +12,6 @@ class UserPenaltyEntity(id: EntityID<Int>) : IntEntity(id) {
     var amount by UserPenalties.amount
     var reason by UserPenalties.reason
     var isPaid by UserPenalties.isPaid
-    var createdAt by UserPenalties.createdAt
+    val createdAt by UserPenalties.createdAt
     var paidAt by UserPenalties.paidAt
 }
