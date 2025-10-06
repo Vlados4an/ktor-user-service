@@ -1,4 +1,4 @@
-package util
+package ru.clevertec.validator
 
 import io.ktor.server.application.*
 

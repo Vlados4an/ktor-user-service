@@ -16,6 +16,6 @@ class UserEntity(id: EntityID<Int>) : IntEntity(id) {
     var role by Users.role
     var status by Users.status
     var isDeleted by Users.isDeleted
-    var createdAt by Users.createdAt
-    var updatedAt by Users.updatedAt
+    val createdAt by Users.createdAt
+    val updatedAt by Users.updatedAt
 }

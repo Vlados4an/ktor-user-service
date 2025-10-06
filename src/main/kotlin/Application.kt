@@ -17,8 +17,8 @@ fun Application.module() {
     configureDatabase()
     configureLiquibase()
     configureDependencies()
+    configureAuth()
     configureRouting()
     configureExceptions()
     configureSerialization()
-    configureAuth()
 }
