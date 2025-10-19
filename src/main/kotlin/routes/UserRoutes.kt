@@ -20,6 +20,12 @@ fun Route.userRoutes() {
 
     val userService by closestDI().instance<UserService>()
 
+    get("/api/v1/users/{id}/email") {
+        val id = call.getIntParamOrBadRequest("id")
+        val email = userService.getUserEmail(id)
+        call.respond(HttpStatusCode.OK, email)
+    }
+
     authenticate("auth-jwt") {
         route("/api/v1/users") {
 

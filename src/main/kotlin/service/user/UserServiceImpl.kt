@@ -85,4 +85,12 @@ class UserServiceImpl : UserService {
 
         penalty.toDto()
     }
+
+    override fun getUserEmail(userId: Int): String = transaction {
+        val user = UserEntity.find {
+            (Users.id eq userId) and (Users.isDeleted eq false)
+        }.firstOrNull() ?: throw EntityNotFoundException("User with id $userId not found")
+
+        user.email
+    }
 }
