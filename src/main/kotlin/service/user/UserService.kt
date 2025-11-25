@@ -15,4 +15,5 @@ interface UserService {
     fun unblockUser(userId: Int): UserDto
     fun getUserPenalties(userId: Int): List<UserPenaltyDto>
     fun createPenalty(request: CreatePenaltyRequest): UserPenaltyDto
+    fun getUserEmail(userId: Int): String
 }
